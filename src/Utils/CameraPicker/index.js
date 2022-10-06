@@ -14,12 +14,13 @@ const StartCamera = async (setStartCam) => {
 
 export const TakePicture = async (camera) => {
     if (!camera) return
-    try {
-        const photo = await Camera.takePictureAsync()
-        return console.log(photo);
-    } catch (error) {
-        console.log(error);
-    }
+    const options = { quality: 1, exif: false, base64: true };
+    // try {
+    await camera.current.takePictureAsync(options).then((data) => console.log(data)).catch((err) => console.log(err))
+    // return photo
+    // } catch (error) {
+    //     console.log(error);
+    // }
 }
 
 export const CameraComponent = ({ cancel, take, cameraRef }) => {

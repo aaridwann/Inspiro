@@ -1,5 +1,5 @@
 import { View, Text, SafeAreaView, ScrollView, KeyboardAvoidingView, TouchableWithoutFeedback, useWindowDimensions, FlatList, Alert } from 'react-native'
-import React, { useRef, useState } from 'react'
+import React, { useContext, useRef, useState } from 'react'
 import InputComponent from '../../Component/Input'
 import Color from '../../Constant/Color'
 import Avatar from '../../Component/Avatar'
@@ -10,19 +10,25 @@ import ModalComponent from '../../Component/Modal'
 import openImagePickerAsync from '../../Utils/ImagePicker'
 import { Camera } from 'expo-camera'
 import StartCamera, { CameraComponent, TakePicture } from '../../Utils/CameraPicker'
+import axios from 'axios'
+import BASE_URL from '../../Constant/BaseUrl'
+import { MainContext } from '../../Context/MainContext'
+import { Type_Reducer } from '../../Reducer/HomeReducer'
+import LaunchCamera from '../../Utils/Camera'
 const data = [1, 2, 3, 4, 5, 6]
 
 const HomeScreen = () => {
+  const cameraRef = useRef()
+  const { valueContext, dispatch } = useContext(MainContext)
   const [dataPost, setDataPost] = useState({ img: '', caption: '' })
   const { height, width } = useWindowDimensions()
   const [modal, setModal] = useState(false)
   const [startCam, setStartCam] = useState(false)
-  const cameraRef = useRef()
+  console.log(valueContext)
 
   function scrollHandler(e) {
     console.log(e)
   }
-
   function showModal() {
     if (modal && dataPost.img) (Alert.alert('Cancel post', 'are you sure ?', [
       {
@@ -36,34 +42,54 @@ const HomeScreen = () => {
       setModal((prev) => prev = !prev)
     }
   }
-
   async function pickImage() {
     const image = await openImagePickerAsync()
     if (image.cancelled) return
     setDataPost((prev) => ({ ...prev, img: image }))
   }
-
   async function openCamera() {
-    await StartCamera(setStartCam)
+    await LaunchCamera()
+    // console.log('okee');
+    // await StartCamera(setStartCam)
   }
-  async function takePhoto(){
-     await TakePicture(cameraRef)
+  async function takePhoto() {
+    // const photo = await TakePicture(cameraRef)
+    // console.log(photo);
   }
 
-  console.log(startCam);
-  console.log(modal);
-  console.log(dataPost);
+  async function submit() {
+    dispatch({ type: Type_Reducer.startFetch })
+    try {
+      const response = await axios.post(`${BASE_URL}/users`, dataPost)
+      dispatch({ type: Type_Reducer.doneFetch, payload: dataPost })
+      setModal(false)
+    } catch (error) {
+      alert(error)
+      dispatch({type:Type_Reducer.errorFetch, payload:error})
+    }
+  }
+
+  function deleteImg() {
+    setDataPost((prev) => ({ ...prev, img: "" }))
+  }
 
   return (
     <>
 
       <AddComponent icon={modal ? 'close-circle' : 'add-circle'} press={showModal} />
-      {modal && startCam ? <CameraComponent cameraRef={cameraRef} take={takePhoto} cancel={() => setStartCam(false)} /> : modal ? <ModalComponent camera={openCamera} img={dataPost.img.uri} image={pickImage} /> : ''}
-      {/* {startCam && <CameraComponent/>} */}
-
+      {modal && startCam ? <CameraComponent cameraRef={cameraRef} take={takePhoto} cancel={() => setStartCam(false)} /> :
+        modal ?
+          <ModalComponent
+            input={(e) => setDataPost(prev => ({ ...prev, caption: e }))}
+            submit={submit}
+            camera={openCamera}
+            img={dataPost.img.uri}
+            image={pickImage}
+            deleteImage={deleteImg}
+            valueInput={dataPost.caption}
+          />
+          : ''}
       <ScrollView stickyHeaderIndices={[0]} contentContainerStyle={{ width: '100%', position: 'relative', backgroundColor: Color.main, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 20 }}>
-
-
 
         {/* === Search bar === */}
         <View style={{ width: '100%', height: width / 6.6, }}>
@@ -93,15 +119,14 @@ const HomeScreen = () => {
 
         </View>
 
-
         {/* === Card Main === */}
-        <FlatList
-          style={{ flex: 1, width: '100%' }}
-          // contentContainerStyle={{ flex: 1, width: '100%', backgroundColor: 'yellow', alignItems: 'center', justifyContent:'center' }}
-          data={data}
-          renderItem={({ data }) => (<CardBigComponent />)}
-        />
-        {/* <View style={{ width: '100%', height: 1000, backgroundColor: 'blue' }} /> */}
+        <View style={{ width: '100%' }} >
+          {data.map((data, i) => (
+            <View key={i}>
+              <CardBigComponent />
+            </View>
+          ))}
+        </View>
 
       </ScrollView>
     </>
